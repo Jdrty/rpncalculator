@@ -1,4 +1,4 @@
-#include "Stack2.h"
+#include "Stack.h"
 
 Stack::Stack() {
     top = -1;  // Initialize empty stack

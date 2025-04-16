@@ -1,5 +1,5 @@
-#ifndef Stack2_h
-#define Stack2_h
+#ifndef Stack_h
+#define Stack_h
 
 class Stack {
     public:
@@ -18,4 +18,4 @@ class Stack {
         void clear();                    // Clear the stack
 };
 
-#endif /* Stack2_h */
+#endif /* Stack_h */

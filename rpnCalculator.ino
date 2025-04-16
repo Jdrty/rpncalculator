@@ -1,5 +1,14 @@
+// PROJECT  :NPN Calculator
+// PURPOSE  :To have a visually appealing, relatively complex RPN Calculator using a self made stack library
+// COURSE   :ICD3O
+// AUTHOR   :Julian Darou-Santos
+// DATE     :Mon Apr 21
+// MCU      :Arduino Nano
+// STATUS   :Working
+// REFERENCE:DER.Mock http://darcy.rsgc.on.ca/ACES/TEL3M/2324/images/BicolorLED23.png
+
 #include <LiquidCrystal.h>
-#include "Stack2.h"
+#include "Stack.h"
 
 // LCD Pin Assignments (Backplane Compatible)
 uint8_t RS = 9, EN = 8, D4 = 7, D5 = 6, D6 = 5, D7 = 4;
@@ -315,7 +324,7 @@ void processKey(char key) {
   // Check for long press first
   checkLongPress(key);
   
-  // If we just entered secondary mode, don't process the decimal point
+  // If we just entered secondary mode, don't add the decimal point
   if (key == '.' && secondaryMode) {
     return;
   }
