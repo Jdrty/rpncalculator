@@ -1,21 +1,21 @@
 #ifndef Stack_h
 #define Stack_h
 
+#include <Arduino.h>
+
 class Stack {
-    public:
-        static const int MAX_SIZE = 20;  // Fixed maximum size
     private:
-        float stackArray[MAX_SIZE];      // Fixed-size array
-        int top;                         // Index of top element
+        int _top;
+        const int capacity = 20;
+        float _stack[20];
+
     public:
-        Stack();                         // Constructor
-        void push(float data);           // Add element to top
-        float pop();                     // Remove and return top element
-        float peek();                    // Return top element without removing
-        bool isEmpty();                  // Check if stack is empty
-        bool isFull();                   // Check if stack is full
-        int size();                      // Return number of elements
-        void clear();                    // Clear the stack
+        Stack();
+        void push(float operand);
+        float pop();
+        float peek();
+        bool isEmpty();
+        bool isFull();
 };
 
 #endif /* Stack_h */

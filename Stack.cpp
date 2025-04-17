@@ -1,42 +1,34 @@
 #include "Stack.h"
+#include <Arduino.h>
 
 Stack::Stack() {
-    top = -1;  // Initialize empty stack
+    _top = -1;
 }
 
-void Stack::push(float data) {
+void Stack::push(float operand) {
     if (!isFull()) {
-        stackArray[++top] = data;
+        _stack[++_top] = operand;
     }
-    // If stack is full, do nothing
 }
 
 float Stack::pop() {
     if (!isEmpty()) {
-        return stackArray[top--];
+        return _stack[_top--];
     }
-    return -1.0f;  // Return -1.0 if stack is empty
+    return 0;
 }
 
 float Stack::peek() {
     if (!isEmpty()) {
-        return stackArray[top];
+        return _stack[_top];
     }
-    return -1.0f;  // Return -1.0 if stack is empty
+    return 0;
 }
 
 bool Stack::isEmpty() {
-    return (top == -1);
+    return _top == -1;
 }
 
 bool Stack::isFull() {
-    return (top == MAX_SIZE - 1);
-}
-
-int Stack::size() {
-    return top + 1;
-}
-
-void Stack::clear() {
-    top = -1;
+    return _top == capacity - 1;
 }

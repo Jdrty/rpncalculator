@@ -5,7 +5,8 @@
 // DATE     :Mon Apr 21
 // MCU      :Arduino Nano
 // STATUS   :Working
-// REFERENCE:DER.Mock http://darcy.rsgc.on.ca/ACES/TEL3M/2324/images/BicolorLED23.png
+// REFERENCE:DER.Mock http://darcy.rsgc.on.ca/ACES/TEI3M/Tasks.html#RPN
+// Mode     :Julians Stack Library (REMEMBER TO CHANGE THIS TO DARCY WHEN TURNING IN)
 
 #include <LiquidCrystal.h>
 #include "Stack.h"
@@ -104,6 +105,48 @@ int historyCount = 0;  // Track actual number of operations in history
 unsigned long keyPressStart = 0;
 bool keyPressed = false;  // Track if a key is currently being pressed
 
+// Timer for trailing decimal auto-removal
+unsigned long lastDecimalTime = 0;
+const unsigned long DECIMAL_TIMEOUT = 3000;  // 3 seconds in milliseconds
+
+// Extended stack operations (not in Stack library)
+int stackSize(Stack &s) {
+  int size = 0;
+  float temp[20];
+  
+  // Count elements while preserving stack
+  while (!s.isEmpty()) {
+    temp[size] = s.pop();
+    size++;
+  }
+  
+  // Restore stack
+  for (int i = size - 1; i >= 0; i--) {
+    s.push(temp[i]);
+  }
+  
+  return size;
+}
+
+void stackClear(Stack &s) {
+  while (!s.isEmpty()) {
+    s.pop();
+  }
+}
+
+void pushFloat(Stack &s, float value) {
+  // We'll push the value directly as a float by converting to int
+  // Since our stack stores floats internally, we can just multiply by 1.0
+  if (s.isFull()) return;
+  s.push((int)value);
+}
+
+float getFloatFromStack(Stack &s) {
+  if (s.isEmpty()) return 0;
+  // Since our stack stores the actual float values, we can return directly
+  return s.peek();
+}
+
 void setup() {
   lcd.begin(LCD_COLUMNS, LCD_ROWS);
   
@@ -129,6 +172,18 @@ void LCDSplash() {
   displayStack();
 }
 
+// Helper function to right align text
+void printRightAligned(const char* text, int row, int width) {
+  int len = strlen(text);
+  int padding = width - len;
+  if (padding > 0) {
+    lcd.setCursor(padding, row);
+  } else {
+    lcd.setCursor(0, row);
+  }
+  lcd.print(text);
+}
+
 void displayStack() {
   if (historyMode) {
     displayHistory();
@@ -136,33 +191,29 @@ void displayStack() {
   }
   
   lcd.clear();
-  int stackSize = stack.size();
+  int size = stackSize(stack);
   
-  if (stackSize > 0) {
-    // Show top two stack elements with visual separator
-    if (stackSize >= 2) {
-      lcd.write(byte(0));  // Stack top symbol
-      lcd.print(" ");
-      lcd.print(stack.peek());
-    } else {
-      lcd.write(byte(2));  // Stack bottom symbol
-      lcd.print(" ");
-      lcd.print(stack.peek());
-    }
+  // Show top stack element right-aligned
+  if (size > 0) {
+    char buffer[16];
+    dtostrf(stack.peek(), 1, 2, buffer);  // Convert float to string with 2 decimal places
+    printRightAligned(buffer, 0, LCD_COLUMNS);
   }
   
-  // Display current input on bottom line
+  // Display current input on bottom line, left-aligned with prompt
   lcd.setCursor(0, 1);
   if (secondaryMode) {
-    lcd.print("2> ");  // Show secondary mode indicator
+    lcd.print("2>");
   } else {
-    lcd.print("> ");
+    lcd.print(">");
   }
+  
   if (bufferIndex > 0) {
+    lcd.print(" ");  // Space after prompt
     lcd.print(numberBuffer);
     lcd.print("_");  // Cursor
   } else {
-    lcd.print("_");
+    lcd.print(" _");  // Space and cursor when no input
   }
 }
 
@@ -217,26 +268,42 @@ void processDigit(char key) {
 }
 
 void processDecimal(char key) {
-  // Only add decimal if we don't already have one
-  if (strchr(numberBuffer, '.') == NULL && bufferIndex < 15) {
+  if (bufferIndex < 15) {  // Prevent buffer overflow
     numberBuffer[bufferIndex++] = key;
+    numberBuffer[bufferIndex] = '\0';  // Null terminate
+    lastDecimalTime = millis();  // Start the timer
+  }
+}
+
+void removeTrailingDecimal() {
+  if (bufferIndex > 0 && numberBuffer[bufferIndex - 1] == '.') {
+    bufferIndex--;
     numberBuffer[bufferIndex] = '\0';
+  }
+}
+
+void checkDecimalTimeout() {
+  if (bufferIndex > 0 && 
+      numberBuffer[bufferIndex - 1] == '.' && 
+      (millis() - lastDecimalTime) > DECIMAL_TIMEOUT) {
+    removeTrailingDecimal();
+    displayStack();  // Update display
   }
 }
 
 void processEnter() {
   if (bufferIndex > 0) {
     float value = atof(numberBuffer);
-    stack.push(value);
+    pushFloat(stack, value);
     bufferIndex = 0;
     numberBuffer[0] = '\0';
   }
 }
 
 void processOperator(char op) {
-  if (stack.size() < 2) return;  // Need at least 2 numbers
+  if (stackSize(stack) < 2) return;  // Need at least 2 numbers
   
-  float b = stack.pop();
+  float b = stack.pop();  // Get values directly
   float a = stack.pop();
   float result;
   
@@ -249,7 +316,7 @@ void processOperator(char op) {
   }
   
   addToHistory(a, b, op, result);
-  stack.push(result);
+  stack.push(result);  // Push result directly
 }
 
 void showModeChange() {
@@ -308,6 +375,7 @@ void checkLongPress(char key) {
   } else if (key == '.') {  // Decimal point for secondary mode toggle
     if (currentTime - keyPressStart > LONG_PRESS) {
       secondaryMode = !secondaryMode;
+      removeTrailingDecimal();  // Clean up any trailing decimal
       showModeChange();
       delay(200);  // Debounce
       keyPressed = false;  // Reset key press state
@@ -316,6 +384,9 @@ void checkLongPress(char key) {
 }
 
 void processKey(char key) {
+  // Check for trailing decimal timeout
+  checkDecimalTimeout();
+  
   if (!keyPressed) {
     keyPressed = true;
     keyPressStart = millis();
@@ -324,7 +395,7 @@ void processKey(char key) {
   // Check for long press first
   checkLongPress(key);
   
-  // If we just entered secondary mode, don't add the decimal point
+  // If we just entered secondary mode, don't process the decimal point
   if (key == '.' && secondaryMode) {
     return;
   }
@@ -357,7 +428,7 @@ void processKey(char key) {
       operationPerformed = true;
     } else if (key == '+') {
       // Swap top 2 values
-      if (stack.size() >= 2) {
+      if (stackSize(stack) >= 2) {
         float a = stack.pop();
         float b = stack.pop();
         stack.push(a);
@@ -379,7 +450,7 @@ void processKey(char key) {
       }
     } else if (key == '/') {
       // Rotate top 3 values
-      if (stack.size() >= 3) {
+      if (stackSize(stack) >= 3) {
         float a = stack.pop();
         float b = stack.pop();
         float c = stack.pop();
@@ -447,7 +518,7 @@ void processKey(char key) {
       }
     } else if (key == '9') {
       // Modulo
-      if (stack.size() >= 2) {
+      if (stackSize(stack) >= 2) {
         float b = stack.pop();
         float a = stack.pop();
         if (b != 0) {
@@ -462,8 +533,14 @@ void processKey(char key) {
     // Normal mode key handling
     if (isdigit(key)) {
       processDigit(key);
+      if (bufferIndex > 1 && numberBuffer[bufferIndex - 2] == '.') {
+        lastDecimalTime = 0;  // Reset decimal timeout when adding digit after decimal
+      }
     } else if (key == '.') {
-      processDecimal(key);
+      // Only add decimal if we don't already have one
+      if (strchr(numberBuffer, '.') == NULL) {
+        processDecimal(key);
+      }
     } else if (key == 'E') {
       processEnter();
       operationPerformed = true;
@@ -513,5 +590,6 @@ char getKey() {
 void loop() {
   char key = getKey();
   processKey(key);
+  checkDecimalTimeout();  // Check for trailing decimal timeout in main loop
   delay(50);  // Small delay to prevent bouncing
 }
