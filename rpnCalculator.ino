@@ -1,4 +1,4 @@
-// PROJECT  :NPN Calculator
+// PROJECT  :RPN Calculator
 // PURPOSE  :To have a visually appealing, relatively complex RPN Calculator using a self made stack library
 // COURSE   :ICD3O
 // AUTHOR   :Julian Darou-Santos
@@ -6,7 +6,6 @@
 // MCU      :Arduino Nano
 // STATUS   :Working
 // REFERENCE:DER.Mock http://darcy.rsgc.on.ca/ACES/TEI3M/Tasks.html#RPN
-// Mode     :Julians Stack Library (REMEMBER TO CHANGE THIS TO DARCY WHEN TURNING IN)
 
 #include <LiquidCrystal.h>
 #include "Stack.h"
@@ -80,7 +79,7 @@ byte operationFlash[] = {
 };
 
 // Keypad Mapping
-uint16_t thresholds[] = {55,58,62,66,75,81,88,97,116,131,152,178,254,341,512,1024};
+uint16_t thresholds[] = {55,58,62,66,75,81,88,97,116,131,152,198,294,341,512,1024};
 char keys[] =           { '+', 'E', '.', '0', '-', '3', '2', '1', '*', '6', '5', '4', '/', '9', '8', '7' };
 
 // Calculator state variables
@@ -135,10 +134,9 @@ void stackClear(Stack &s) {
 }
 
 void pushFloat(Stack &s, float value) {
-  // We'll push the value directly as a float by converting to int
-  // Since our stack stores floats internally, we can just multiply by 1.0
+  // Push the value directly as a float
   if (s.isFull()) return;
-  s.push((int)value);
+  s.push(value);
 }
 
 float getFloatFromStack(Stack &s) {
@@ -436,13 +434,13 @@ void processKey(char key) {
         operationPerformed = true;
       }
     } else if (key == '-') {
-      // Drop top value
+      // Drop top value ↓
       if (!stack.isEmpty()) {
         stack.pop();
         operationPerformed = true;
       }
     } else if (key == '*') {
-      // Duplicate top value
+      // Duplicate top value ↑
       if (!stack.isEmpty()) {
         float a = stack.peek();
         stack.push(a);
