@@ -141,7 +141,6 @@ void pushFloat(Stack &s, float value) {
 
 float getFloatFromStack(Stack &s) {
   if (s.isEmpty()) return 0;
-  // Since our stack stores the actual float values, we can return directly
   return s.peek();
 }
 
